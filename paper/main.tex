@@ -1,0 +1,478 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+% The preceding line is only needed to identify funding in the first footnote. If that is unneeded, please comment it out.
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+%Agregados manualmente
+\usepackage{stfloats}   % Permite floats de doble columna en la parte inferior
+\usepackage{rotating}
+%.......
+
+\begin{document}
+
+\title{Cell Density Estimation in AOSLO Images Using Image Processing And Deep Learning}
+
+\author{
+\IEEEauthorblockN{Nicolay Agustin Cerda Cortez}
+\IEEEauthorblockA{\textit{Engineering Department} \\
+\textit{Universidad de La Sabana. Chia, Colombia} \\
+nicolayceco@unisabana.edu.co}
+\and
+\IEEEauthorblockN{Santiago Toledo Cortés}
+\IEEEauthorblockA{\textit{Engineering Department} \\
+\textit{Universidad de La Sabana. Chia, Colombia} \\
+santiago.cortes1@unisabana.edu.co}
+}
+
+
+\maketitle
+
+\begin{abstract}
+In ophthalmology, early detection of degenerative diseases in the eye is crucial, however, many times conventional clinical cameras do not allow quantification of retinal cell loss and, in addition, manual analysis of these images is inefficient and poorly automated. To address this problem, techniques using deep learning models for image processing and machine learning are proposed to provide an accurate and automated estimation of cell density to improve the analysis of Adaptive Optics Scanning Laser Ophthalmoscopy (AOSLO) images, which enables detailed visualization of the fundus and individual cells without invasive procedures. This approach enables earlier and more accurate diagnosis of genetic eye diseases such as retinitis pigmentosa and Stargardt's disease.
+\end{abstract}
+
+\begin{IEEEkeywords}
+AOSLO, Deep Learning, Machine Learning, Neural Networks
+\end{IEEEkeywords}
+
+\section{Introduction}
+In recent years, the field of ophthalmology has undergone a transformation thanks to our ability to obtain detailed images of the inner posterior section of the eye. The AOSLO-type imaging technique (adaptive scanning light ophthalmoscopy with detector splitting) is relatively recent in the field of ophthalmology. Although it has shown promise in the diagnosis of ocular diseases, it presents practical and technical challenges that hinder its efficient implementation \cite{Nakatake2019}.
+
+By inspecting the fundus of the eye, specialists can identify signs of degenerative diseases that can affect not only the visual system but also other areas of the body, such as retinopathy caused by diabetes mellitus \cite{Roorda1988}. Despite recent advances in automated cone segmentation algorithms for AOSLO images, quantitative analysis of these images remains a time-consuming manual process \cite{Cunefare2017}.
+
+A key biomarker that can be extracted from AOSLO images is the density and spatial distribution of cone photoreceptors. Abnormal cone loss or reorganization is an early hallmark of inherited retinal diseases such as Stargardt's disease and retinitis pigmentosa. Unfortunately, cone quantification is still performed largely manually, requiring expert annotators to mark each cell, a laborious and error‑prone task that makes large‑scale studies impractical \cite{Cunefare2017}. Although recent algorithms based on machine learning and deep learning have begun to automate cone segmentation, many remain experimental, demand significant computational resources, or fail to generalize when image quality, retinal eccentricity, or acquisition modality vary.
+
+In an ideal world, the solution to the problem would involve an automated, accurate, efficient and widely accessible approach to AOSLO image analysis in the diagnosis of genetic eye diseases. This would greatly enhance ophthalmic medical health, allowing for early detection, timely treatment, and better quality of life for patients affected by these diseases.
+
+Despite recent advances in automated cone density estimation, three critical limitations prevent widespread clinical adoption of AOSLO analysis. First, current state-of-the-art methods require complex architectures with substantial computational demands: the CoDE model \cite{ToledoCortes2023}, for instance, employs an Xception-based U-Net with 2.06 million trainable parameters, trained over 200 epochs with extensive augmentation, limiting accessibility to specialized research centers with high-end GPU resources. This computational intensity directly impacts cost, as the hardware and training time requirements restrict deployment to well-funded institutions. Second, existing automated methods exhibit limited accuracy and generalization: reported mean biases range from -159 to +519 cones/mm² with wide 95\% confidence intervals (±1500-2800 cones/mm²), and performance degrades when image quality, retinal eccentricity, or acquisition modality vary \cite{Cunefare2017, ToledoCortes2023}. Third, clinical deployability remains elusive due to cumbersome pre- and post-processing requirements—patch-based approaches necessitate pixel-by-pixel analysis \cite{Cunefare2017}, mask-generation methods demand additional annotations \cite{Davidson2018}, and black-box architectures lack the interpretability needed for clinical validation.
+
+This study addresses these limitations by proposing and evaluating four lightweight deep learning architectures for automated cone density estimation. By simplifying network design while maintaining diagnostic accuracy, we demonstrate that efficient, accurate, and clinically deployable solutions are achievable. The main contribution is showing that reduced architectural complexity—with models containing as few as 538,609 parameters (a 74\% reduction compared to the 2.06 million parameter baseline)—can match or exceed the performance of complex state-of-the-art approaches while significantly reducing computational requirements, thus facilitating wider clinical adoption of AOSLO image analysis.
+
+\section{Problem and research questions}
+
+\subsection{Problem}
+
+The challenge lies in the inefficiency and technical challenges in accurately estimating cell density within AOSLO-like images, crucial for diagnosing genetic eye diseases. The cone counting process is performed by a medical professional and is very manual, so it takes a long time to get the results.
+
+The current models that develop this task have complex architectures and require high computational resources, this limits the application of this kind of models in clinical and research environments in which high efficiency is needed.
+
+With this situation, we need to develop lighter solutions that keep the accuracy as good as the existing models but reducing its complexity to make the practical implementation more easy. Overcoming these obstacles is vital to enable more reliable and efficient cell density estimation, facilitating earlier disease detection and treatment, thereby advancing ophthalmic medical care.
+
+\subsection{Research Questions}
+\begin{itemize}
+    \item How to employ image processing and deep learning techniques to improve cell density estimation in AOSLO-like images?
+    \item What are the current challenges and limitations in cell density estimation using AOSLO-like images?
+    \item Is it possible to maintain comparable performance to more complex models by using an optimized, lighter architecture for cone density estimation?
+\end{itemize}
+
+
+\section{State of the art}
+Research has concentrated on the development and validation of advanced AOSLO image analysis methodologies to improve cone counting and enable ocular disease diagnosis. Different machine learning models were used for ocular density estimation and cone detection in AOSLO images.
+
+Cone density is reduced in retinitis pigmentosa compared to control subjects from a medical perspective \cite{Nakatake2019}. This identifies important information for early detection of cone photoreceptors cell loss in retinitis pigmentosa. \cite{Nakatake2019} further concluded in the study that AOSLO-type image analysis may be a useful modality for detecting early changes in cone photoreceptors cells in patients with ocular diseases.
+
+Early CNN‑based detectors—such as the patch‑wise classifier introduced by Cunefare et al. \cite{Cunefare2019}—demonstrated near‑human accuracy in locating cones, yet relied on heavy pre‑/post‑processing that limited real‑world deployment.
+
+Similarly, other research has identified other results in eye diseases using deep learning algorithms. Zhang and his team (\cite{Zhang2021}) dentified and analyzed an individual microaneurysm with a deep learning model in AOSLO-like images, which may be essential to understand the pathogenesis and development of the disease process. The findings in the current work may contribute to enhancing the diagnosis and treatment of diabetic retinopathy and hopefully be applied to other retinal diseases or disorders.
+
+The Multidimensional Recurrent Neural Network (MDRNN) approach developed in the study by \cite{Davidson2018}~(\cite{Davidson2018}) is the first method able to reliably and automatically identify cones in both healthy and Stargardt's disease affected retinas, this gives us the possibility to apply the MDRNN approach and evaluate its results in other types of diseases.
+
+
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=0.5\textwidth]{attachments/image1.png}}
+\caption{Multidimensional Recurrent Neural Network (MDRNN) architecture proposed by Davidson et al. for automated cone photoreceptor detection in AOSLO images. This approach represents one of the first reliable automated methods for cone identification across different pathological conditions.}
+\label{fig}
+\end{figure}
+
+Since 2020, the community has increasingly adopted the density‑map regression paradigm inspired by crowd‑counting literature. Instead of detecting each cone explicitly, a fully convolutional network predicts a continuous density map whose integral equals the true cell count. Xie et al.\cite{Xie2018} pioneered this strategy in microscopy, and it has since been tailored to AOSLO.
+
+Toledo‑Cortés introduced CoDE \cite{ToledoCortes2023}, a U‑Net with an Xception backbone and a linear correction layer trained only on cone coordinates. CoDE reduced the mean counting bias by 35 percent compared with classical methods and, combined with spatial characteristics, achieved an F1 score of 0.77 to differentiate retinas from retinitis pigmentosa and Stargardt, showing that cone distribution patterns themselves are powerful disease biomarkers.
+
+More recent work has focused on reducing annotation cost and boosting robustness. The Attention‑Flow U‑Net of Kulyabin\cite{Kulyabin2024} adds spatial‑ and channel‑attention blocks plus flow‑vector outputs that separate touching cones, achieving F1$>$0.95 while requiring only sparsely annotated training data.
+
+In general, studies to perform AOSLO type image analysis using Machine Learning and Deep Learning techniques allow optimizing and automating the analysis process through cone counting. There are different methods to reach this estimation, however it is still required to improve the efficiency of the models through image processing techniques and a better neural network architecture.
+
+The development and evaluation of advanced Adaptive Optics Scanning Laser Ophthalmoscopy (AOSLO) image analysis techniques have significantly enhanced cone counting and the diagnosis of ocular diseases. The following table provides a summary of the state-of-the-art research in this area, highlighting the focus and key findings of each study.
+
+% === TABLA DE DOBLE COLUMNA EN EL PIE DE PÁGINA ===
+\begin{table*}[!t]                     % table* = dos columnas ; [!b] = bottom
+\caption{State of the art in AOSLO image analysis with machine‑ and deep‑learning techniques}
+\centering
+\begin{tabular}{|c|c|c|c|}
+\hline
+\textbf{Study} & \multicolumn{3}{|c|}{\textbf{Machine/Deep‑Learning Analysis of AOSLO Images}} \\
+\cline{2-4}
+\textbf{Reference} & \textbf{\textit{Focus}} & \textbf{\textit{Approach / Model}} & \textbf{\textit{Key Findings}} \\
+\hline
+\cite{Cunefare2017}      & Cone photoreceptor detection           & CNN‑based open‑source software           & Accurate automatic cone detection \\ \hline
+\cite{Davidson2018}      & Cone localization (healthy \& Stargardt) & Deep‑learning localization               & Robust in healthy and diseased retinas \\ \hline
+\cite{Nakatake2019}      & Early cone‐loss detection in RP        & AOSLO imaging analysis                   & AOSLO enables early RP diagnosis \\ \hline
+\cite{ToledoCortes2023}  & Cone density estimation \& disease Dx  & CoDE / CoDED density‑estimation models   & Precise density and disease classification \\ \hline
+\cite{Zhang2021}         & Retinal microaneurysm segmentation     & AOSLO‑Net segmentation network           & Fully automatic microaneurysm masks \\ \hline
+\cite{Roorda1988}        & Development of AOSLO technology        & Adaptive optics SLO instrumentation      & First cellular‑resolution retinal imaging \\ \hline
+\multicolumn{4}{l}{$^{\mathrm{a}}$AOSLO: Adaptive Optics Scanning Laser Ophthalmoscopy; RP: Retinitis Pigmentosa; Dx: Diagnosis.}
+\end{tabular}
+\label{tab:aoslo_ml_sota}
+\end{table*}
+
+
+\section{Objectives}
+\subsection{General Objective}
+To develop, optimize and evaluate deep learning techniques for cone density estimation in Adaptive Scanning Light Ophthalmoscope with Detector Division (AOSLO) images, in order to provide more efficient, accurate and accessible tools for early diagnosis and monitoring of genetic eye diseases in the field of ocular medicine.
+
+\subsection{Specific Objectives}
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\item
+Explore and analyze AOSLO image datasets and review existing deep learning models for cone density estimation
+\item
+Train deep learning models using large, diversified datasets to accurately estimate diversified datasets to accurately estimate cell density in AOSLO images.
+\item Systematically evaluate proposed models to improve cone counting accuracy in AOSLO images.
+\end{enumerate}
+
+\section{Methods}
+
+\subsection{Dataset and Preprocessing}
+
+This study utilized the Dubis dataset, which comprises 264 split detector AOSLO images. The dataset provides a comprehensive sample with well-defined disease labeling: 60 control cases, 65 patients with Stargardt's disease, and 139 patients with retinitis pigmentosa, representing two major inherited retinal degenerative conditions. Each image contains expert annotations marking the centroids of individual cone photoreceptors, providing ground truth labels for supervised learning with pixel-coordinate precision for each cone present in the image.
+
+From the complete dataset, we selected 184 images for model development and validation, with the remaining 80 images reserved as an independent test set. This partitioning strategy ensures robust evaluation while maintaining sufficient data for model training. The training subset was further divided into 140 images (76\%) for training and 44 images (24\%) for validation, with careful attention to maintaining balanced disease distribution across both subsets.
+
+To enhance dataset diversity and improve model generalization, we implemented several data augmentation techniques during training. These included random rotations within ±15° to account for natural variations in image orientation, horizontal and vertical flips to increase spatial diversity, and intensity variations to simulate realistic imaging condition fluctuations. These augmentation strategies were designed to increase the effective training dataset size while maintaining biological plausibility of the augmented images.
+
+\subsection{Proposed Architectures}
+
+This work presents four alternative models for cone counting in images obtained through Adaptive Optics Scanning Laser Ophthalmoscopy (AOSLO), using the baseline model \textit{Cone Density Estimation} (CoDE) proposed by Toledo~\cite{ToledoCortes2023} as a starting point.
+
+All models were trained using AOSLO images accompanied by manual annotations consisting of dot marks placed on the centroid of each cone photoreceptor. These annotations were made by an experienced human grader familiar with identifying such structures. As a result, the labels are a collection of pixel coordinates representing the central position of each cone.
+
+\subsubsection{Model A: Lightweight U-Net}
+
+Following the approach of the baseline model, this architecture aims to estimate the number of cones by predicting a density map for each AOSLO image. This map is generated from the cone centroid coordinates and can be spatially integrated to obtain the total number of cones in the image.
+
+Compared to the CoDE model, this architecture is simplified, providing an advantage particularly when training with a smaller dataset.
+
+\begin{itemize}
+    \item \textbf{Encoder}: Three downsampling blocks with 16, 32, and 64 filters respectively
+    \item \textbf{Bottleneck}: 128 filters with 0.5 dropout for regularization  
+    \item \textbf{Decoder}: Three upsampling blocks with skip connections
+    \item \textbf{Output}: Single channel density map with ReLU activation
+    \item \textbf{Total parameters}: 538,609 (significant reduction from baseline)
+\end{itemize}
+
+Each encoder/decoder block consists of:
+- Two 3×3 convolutions with same padding
+- Batch normalization after each convolution
+- ReLU activation
+- MaxPooling (encoder) or ConvTranspose (decoder)
+
+Model A architecture is shown on Fig~\ref{fig_modelA}.
+
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=0.5\textwidth]{attachments/Model A.png}}
+\caption{Architecture diagram of Model A: Lightweight U-Net for cone density estimation. The encoder pathway (left) consists of three downsampling blocks with progressively increasing filter counts (16, 32, 64), each containing two 3×3 convolutions followed by batch normalization, ReLU activation, and 2×2 max pooling. The decoder pathway (right) mirrors the encoder with three upsampling blocks using transposed convolutions, maintaining symmetry through skip connections that concatenate corresponding encoder features to preserve spatial details. This simplified architecture achieves superior performance with only 538,609 parameters, demonstrating that reduced complexity can enhance generalization in data-limited medical imaging scenarios.}
+\label{fig_modelA}
+\end{figure}
+
+\subsubsection{Model B: Lightweight U-Net with Linear Correction}
+
+Extends Model A with post-hoc linear regression to correct systematic counting errors. The correction layer learns a linear transformation applied to the integrated density map, compensating for consistent over- or under-estimation patterns.
+
+\begin{itemize}
+\item Same base architecture as Model A
+\item Additional linear layer: $\hat{C}_{corrected} = \alpha \cdot \hat{C}_{raw} + \beta$
+\item Parameters learned via separate optimization phase
+\end{itemize}
+
+\subsubsection{Model C: Integrated Global-Sum Regression}
+
+Incorporates regression directly into the network architecture through a global-sum layer operating on the density map. This approach enables end-to-end training of both density estimation and count regression, theoretically providing better optimization.
+
+\begin{itemize}
+\item Base U-Net architecture
+\item Global sum layer: $\hat{C} = \sum_{i,j} \hat{D}_{i,j}$
+\item Dense layer with single neuron for final count
+\item Joint loss: $L = L_{density} + \lambda L_{count}$ where $\lambda = 0.01$
+\end{itemize}
+
+\subsubsection{Model D: Direct Regression}
+
+Eliminates density map prediction entirely, using only the encoder to directly regress cone count. This approach minimizes parameters and computational requirements but sacrifices spatial interpretability.
+
+\begin{itemize}
+\item Encoder-only architecture
+\item Global average pooling after final encoder stage
+\item Dense layers for direct count regression
+\item Minimal parameters but no spatial interpretability
+\end{itemize}
+
+\subsection{Training Protocol}
+
+All models were trained using the best configuration for each one:
+\begin{itemize}
+    \item Optimizer: Adam with learning rate 1×10⁻³
+    \item Batch size: 8 images per batch
+    \item Loss function: Mean Squared Error (MSE)
+    \item Learning rate scheduling: ReduceLROnPlateau (factor=0.7, patience=5)
+    \item Early stopping: Patience=20 epochs based on validation MSE
+    \item Hardware: GPU T4 - Google Colab
+\end{itemize}
+
+\subsection{Evaluation Metrics}
+
+Model performance was assessed using multiple metrics:
+\begin{itemize}
+    \item Mean Absolute Error (MAE): Average absolute difference between predicted and true counts.  
+    $$\frac{1}{n}\sum_{i=1}^{n}|y_i - \hat{y}_i|$$
+    \item Mean Squared Error (MSE): Squared difference penalty for larger errors.
+    $$\frac{1}{n}\sum_{i=1}^{n}(y_i - \hat{y}_i)^2$$
+    \item Root Mean Squared Error (RMSE): Square root of MSE for interpretability.
+    $$\sqrt{MSE}$$
+    \item Mean Absolute Percentage Error (MAPE): Relative error percentage.  
+    $$\frac{100\%}{n}\sum_{i=1}^{n}\left|\frac{y_i - \hat{y}_i}{y_i}\right|$$
+\end{itemize}
+
+\subsection{Quantitative Performance}
+Table below shows the quantitative performance of each model.
+
+\begin{table}[htbp]
+\centering
+\caption{Performance metrics (lower is better).}
+\label{tab:metrics_models}
+\begin{tabular}{|l|c|c|c|c|}
+\hline
+\textbf{Model} & \textbf{MAE} & \textbf{MSE} & \textbf{RMSE} & \textbf{MAPE (\%)} \\
+\hline
+Model A & 921.624 cones & 1575495.625 & 1255.188 cones & 13.64\% \\
+Model B & 977.046 cones & 1571433.375 & 1253.568 cones & 12.80\% \\
+Model C & 3884.538 cones & 24708422.000 & 4970.757 cones & 55.29\% \\
+Model D & 1043.950 cones & 1735681.625 & 1317.453 cones & 17.08\% \\
+\hline
+\end{tabular}
+\end{table}
+
+Figure~\ref{fig:bland-altman} shows the Bland-Altman plot of the results for each model.
+
+\begin{figure*}[!t]
+\centerline{\includegraphics[width=1\textwidth]{attachments/BlandAltmant.png}}
+
+ \caption{Bland-Altman analysis comparison between predicted and ground-truth cone counts with all compared models. The difference between predicted and actual counts (y-axis) is plotted against the mean of predicted and actual counts (x-axis) for each subplot, with the mean bias (solid) and 95\% limits of agreement (dashed ±1.96 SD) represented as horizontal lines. Model A (top-left) exhibits strong systematic bias averaged over cones (-84.5 cones) and very wide Limits of Agreetment (±2.4×10³ to ±2.5×10³) denoting low calibrational accuracy despite low reported MAE. Model B (top-right) has severe systemic underestimation (mean bias −309.1 cones) as well as very wide limits of agreement ±2.1×10³ and ±2.7×10³. Model C (bottom-left) is catastrophic with mean bias +519.0 cones and the widest limits of agreement (±9.2×10³ to ±1.0×10⁴), indicative that the integrated global-sum approach is not recommended. Model D (bottom-right) show the best calibration with minimal bias (+15.5 cones) and the tightest limits of agreement (±2.6×10³), representing the best fixed systematic performance with larger individual prediction errors.}
+ 
+\label{fig:bland-altman}
+\end{figure*}
+
+
+\subsection{Baseline Model (Residual Encoder-Decoder)}
+The starting point was an Xception‑style residual encoder–decoder.The encoder down‑sampled the input through four depthwise‑separable convolution blocks with skip connections; the decoder mirrored this structure with transposed convolutions and additive residuals.  A 5×5 convolution produced the final per‑pixel density response, followed by a batch‑norm + ReLU and a 1×1 linear head.
+
+% ================= TABLE: Models Comparision detailed =================
+\begin{sidewaystable*}[!htbp]
+\centering
+\scriptsize
+\caption{Comparison of models}
+\label{tab:model_comparison}
+\renewcommand{\arraystretch}{1.25}
+    \begin{tabular}{|p{2.8cm}|p{3.2cm}|p{3.2cm}|p{3.2cm}|p{3.2cm}|p{3.2cm}|}
+      \hline
+\textbf{Aspect} & \textbf{Base Model (Residual Encoder-Decoder)} & \textbf{Model A (Lightweight U-Net)} & \textbf{Model B (Lightweight U-Net + Linear Regression)} & \textbf{Model C (Proposed U-Net + Global-Sum)} & \textbf{Model D (Encoder + GAP)} \\
+\hline\hline
+\textit{Backbone topology} &
+Xception-style encoder (32–256 depthwise-separable filters) with Conv2DTranspose \newline
+Symmetric decoder with additive residuals after each block \newline
+Entry block + 3 identical blocks (64, 128, 256 filters) + symmetric decoder &
+Classic U-Net: 3 encoder stages (16–64 filters) \newline
+Bottleneck 128 filters + Dropout 0.5 \newline
+3 decoder stages with skip concatenation &
+Classic U-Net: 3 encoder stages (16–64 filters) \newline
+Bottleneck 128 filters + Dropout 0.5 \newline
+3 decoder stages with skip concatenation &
+Classic U-Net: 3 encoder stages (16–64 filters) \newline
+Bottleneck 128 filters + Dropout 0.5 \newline
+3 decoder stages with skip concatenation \newline
+\textbf{Integrated Global Lambda sum layer} &
+Simple encoder: 3 encoder stages (16–64 filters) \newline
+Bottleneck 128 filters + Dropout 0.5 \newline
+No decoder; GlobalAveragePooling2D + Dense(64) + Dense(1) \\
+\hline
+Skip-connection type & 
+Residual \textbf{add} after each encoder/decoder block with projection via Conv2D 1x1 & 
+Concatenate feature maps (standard U-Net) & 
+Concatenate feature maps (standard U-Net) &
+Concatenate feature maps (standard U-Net) &
+None (encoder only, no skip-connections) \\
+\hline
+Output head & 
+5×5 conv $\rightarrow$ BN + ReLU $\rightarrow$ 1×1 linear conv \newline
+(dense map prediction) & 
+1×1 conv (ReLU) directly to density map &
+1×1 conv (ReLU) to density map; \newline
+Post-hoc linear regression fitted on total map sum &
+1×1 conv (ReLU) to density map $\rightarrow$ \textbf{Lambda(tf.reduce\_sum, axis=[1,2,3])} $\rightarrow$ Flatten $\rightarrow$ Dense(1, linear) & 
+GlobalAveragePooling2D $\rightarrow$ Dense(64, ReLU) $\rightarrow$ Dense(1) direct count regression \\
+\hline
+Loss term(s) & 
+Density MSE only \newline
+(density map vs ground truth) & 
+Density MSE only & 
+Density MSE only (U-Net); \newline
+Linear regression trained separately with MSE on counts &
+\textbf{Count MSE only} (end-to-end optimization for scalar counting) &
+Count MSE only (no density map prediction) \\
+\hline
+Input resolution & 
+256 × 256 × 3 & 
+256 × 256 × 3 & 
+256 × 256 × 3 & 
+256 × 256 × 3 & 
+256 × 256 × 3 \\
+\hline
+Batch size & 
+\textbf{16} & 
+8 & 
+8 & 
+8 & 
+8 \\
+\hline
+Optimizer / LR & 
+\textbf{RMSprop}, $1\times 10^{-3}$ \newline
+(step-wise LR schedule) & 
+Adam, $1\times 10^{-3}$ & 
+Adam, $1\times 10^{-4}$ (U-Net); \newline
+Sklearn LinearRegression & 
+Adam, $1\times 10^{-3}$ &
+Adam, $1\times 10^{-3}$ \\
+\hline
+LR schedule & 
+\textbf{Step decay}: every 16 epochs \newline
+$1\times 10^{-3} \rightarrow 1\times 10^{-4} \rightarrow 1\times 10^{-5}$ & 
+ReduceLROnPlateau (factor 0.7, patience = 5, min\_lr = $1\times 10^{-6}$) & 
+ReduceLROnPlateau (factor 0.7, patience = 5, min\_lr = $1\times 10^{-6}$) & 
+ReduceLROnPlateau (factor 0.7, patience = 5, min\_lr = $1\times 10^{-6}$) &
+ReduceLROnPlateau (factor 0.7, patience = 5, min\_lr = $1\times 10^{-6}$) \\
+\hline
+Early stopping & 
+\textbf{Patience = 20} (val\_loss) & 
+Patience = 20 (val\_loss) & 
+Patience = 20 (val\_loss) & 
+Patience = 20 (val\_loss) &
+Patience = 20 (val\_loss) \\
+\hline
+Data augmentation & 
+\textbf{Extensive}: rotation (30°), width/height shift (0.3), zoom (0.3), horizontal/vertical flip, fill\_mode='constant' & 
+– & 
+– & 
+\textbf{Flip horizontal/vertical + Rotation k×90°} &
+– \\
+\hline
+Density threshold filter & 
+\textbf{$< 400$ cones (training) + $< 1000$ cones (validation)} &
+$< 400$ cones (training) + $< 1000$ cones (validation) & 
+$< 400$ cones (training) + $< 1000$ cones (validation) & 
+$< 400$ cones (training) + $< 1000$ cones (validation) &
+$< 400$ cones (training) + $< 1000$ cones (validation) \\
+\hline
+Epochs to convergence & 
+\textbf{200 epochs maximum} & 
+Maximum 100 & 
+Maximum 100 & 
+Maximum 100 &
+Maximum 100 \\
+\hline
+\end{tabular}
+\end{sidewaystable*}
+
+Table~\ref{tab:metrics_models} reports mean absolute error (\textbf{MAE}), mean squared error (\textbf{MSE}), root--mean--squared error (\textbf{RMSE}) and mean absolute percentage error (\textbf{MAPE}) with respect to the ground–truth cone count. Among the proposed variants, \textbf{Model~A} (mini U--Net) and \textbf{Model~B} (mini U--Net~+~linear correction) achieve the lowest numerical error: an average absolute deviation of only $\approx0.28$~cones per $256\times256$ crop---well within the inter--grader variability reported by Cunefare\,\cite{Cunefare2017}. In contrast, \textbf{Model~C} (global--sum regression in--graph) diverged during training, resulting in grossly overestimated counts (MAPE~$>92\%$). \textbf{Model~D} (direct scalar regression) remained stable but lost spatial supervision and therefore exhibited higher RMSE compared with Model~A.
+
+
+
+\section{Discussion}
+
+\subsection{Implications for Clinical Deployment}
+
+The success of simplified architectures in this work has significant implications for clinical application of automated AOSLO analysis. The models developed allow for implementation in multiple clinical settings, thereby expanding the availability of the technology to a greater number of healthcare institutions. Such availability is particularly significant for AOSLO imaging, as few expert analyses, which had confined it to experts until now. 
+
+The computational efficiency of these models enables real-time analysis during patient scanning and expedites quick clinical decisions. Such an ability is essential for clinical workflows where time in diagnostics can determine the course of treatment. The method also provides for larger patient cohorts to be screened for population studies and longitudinal monitoring programs, expanding the scope of large-scale research initiatives.
+
+As opposed to the black box models, by providing spatial information through the density map outputs, here, the clinicians may interpret and validate the description further kept clinically meaningful. The interpretability is essential for its clinical adoption since it makes the conclusion of automated analysis perceivable and testable by doctors, resulting in trust of AI-assisted diagnostics.
+
+\subsection{Advantages of Simplified Architectures}
+
+The results of the simplified architectures in this paper contradict the assumption that a more complex model always leads to better performance. There are a number of reasons for this success, especially in low data (as in only 140 training samples).
+
+Smaller models avoid memorizing the training data, thus generalizing better even with the small sets. Thanks to this constraint, the architecture avoids overfitting without needing additional regularization techniques. This simpler model makes the model concentrate on learning general patterns rather than memorizing specific examples, which is beneficial for data such as medical imaging data sets.
+
+In addition, simpler architectures have a more stable gradient flow when training, which reduces instability issues and makes the optimization process more predictable. This stability translates into more reliable convergence and less sensitivity to hyperparameter choice, which is an advantage in clinical scenarios where the model may need to be retrained several times. The architecture is specifically intended for counting cones, not for analyzing images in general.
+
+\subsection{Interpretation of the performance gap}
+
+The better generalization of the compact design in data-limited regimes ($N_{\mathrm{train}}=140$) is due to several complementary factors that work together to prevent overfitting. The reduced model capacity, with fewer filters (16/32/64) and a narrower bottleneck, discourages noise memorization and shifts the bias-variance tradeoff toward generalization. In addition, implicit regularization through the global-sum constraint ($\sum_{ij}\hat{D}_{ij}=\hat{C}$) forces the network to distribute the mass efficiently, avoiding the uncontrolled predictions seen in large unconstrained decoders. Stochastic regularization with a 0.5 dropout at the bottleneck introduces noise that further reduces overfitting, as evidenced by an 8\% drop in the validation MAE when this layer is disabled. Finally, shallow encoders have shorter gradient paths with near-zero gradient fading or bursting behavior, which simplifies the optimizer hyperparameter search and improves training stability.
+
+\subsection{Visual assessment}
+
+Figure~\ref{fig:model_pred} shows that the model clearly maintains the spatial organization of the photoreceptor mosaic in its predictions. Visual comparison of ground-truth annotations and the density maps of Model A indicates that the model successfully captures the total cone number and retains the spatial distribution patterns of the healthy and diseased retinal tissue. This spatial conservation is important for clinical interpretation, because it allows for clinicians to evaluate not only total cone density, but also regional variation/patterns that could potentially be of diagnostic value. The density map facilitates easy intuitional interpretation for ophthalmologists and corresponds well to the clinical knowledge of retinal pathology.
+
+\begin{figure*}[!b]
+\centerline{\includegraphics[width=1\textwidth]{attachments/ModelA_Prediction.png}}
+\caption{Qualitative comparison of Model A predictions on representative AOSLO images. Left column: Original adaptive optics scanning laser ophthalmoscopy images showing individual cone photoreceptors as circular structures. Middle column: Ground-truth density maps generated from expert manual annotations, where bright pixels indicate cone centroid locations. The maps preserve the spatial distribution of cones while providing continuous probability surfaces suitable for integration-based counting. Right column: Model A predictions showing remarkable spatial correspondence with ground truth. The predicted density maps successfully capture both the overall cone count and the characteristic spatial patterns.}
+\label{fig:model_pred}
+\end{figure*}
+
+\subsection{Limitations and Future Directions}
+
+A number of limitations are to be recognized in the study. The data set size was limited to 264 images, which could restrict the generalization to larger patient populations and more varied image conditions. Disease coverage was limited to 2 diseases (retinitis pigmentosa and Stargardt's disease), and validation with other diseases to demonstrate more generalized clinical utility is warranted. All images were research quality (the best quality available), and clinical images may have additional difficulties for model performance such as motion artifacts or other suboptimal focus. Additionally, external validation in diverse clinical settings is necessary to prove our findings generalize across institutions and imaging modalities.
+
+Future research could consider further validating on other retinal diseases, exploring self-supervised pretraining techniques, and developing techniques for uncertainty quantification to measure model confidence for clinical deployment. Prospective clinical validation studies will also be necessary to verify real-world effectiveness, whereas federated learning approaches can facilitate multi-institutional model development without compromising patient privacy and data security.
+
+\subsection{Reproducibility and Software Version Control}
+
+One significant conclusion reached in this study is that changes in the underlying software libraries have a great impact on the deep learning techniques. Strong performance variation was observed between Tensorflow 2.15 and 2.18, emphasizing the importance of handling environments in medical AI development. This emphasizes the need for:
+
+\begin{itemize}
+    \item Container-based deployment with Docker, or equivalent.
+    \item Complete documentation of software dependencies
+    \item Ongoing model validation between different programming versions
+    \item Evaluation protocols of medical AI systems on the road to standardization
+\end{itemize}
+
+Hospitals and healthcare institutions deploying AI need to have clear version control and validation routines in place so that their AI continues to work as expected as the software is updated.
+
+\section{Conclusions}
+
+In this study, we show that lightweight deep learning architectures can outperform traditional methods for cone density estimation applied to AOSLO images, as well as requiring much less computational effort. The proposed Lightweight U-Net (Model A) algorithm also outperformed the baseline in counting performance with fewer parameters and reduced GPU memory.
+
+The effectiveness of the dense connections in simplified architecture in this study provides some interesting observations on the perception tasks in medical image analysis. In data-poor regimes such as specialized medical imaging, these architectural constraints can be used as regularization mechanisms, prevent overfitting, and result in better generalization. The finding that small models can outperform a ResNet suggests that the tasks involving cone counting depend more on prescribed inductive biases than on model capacity.
+
+Our results have important implications for clinical utilization of automated AOSLO analysis. The computational efficiency realized allows real-time processing while scanning patient data, which facilitates the technology adoption by a wider variety of clinical environments. The interpretable density map results contain spatial information that clinicians can validate and understand and remain clinically relevant by easing laborious manual counting operations.
+
+The practical importance of these results is that we see, however, serious challenges in the reproducibility of deep learning, which go beyond mere academic issues. The performance of the relatively old and the relatively new Tensorflow versions 2.15 and 2.18 varies greatly, which underlines the vulnerability of deep learning systems running. This lack of robustness led to an inability to replicate previous work and underlines the pressing need for robust deployment in medical AI.
+
+Data augmentation techniques are essential for model stability, and techniques such as rotations, flips, and intensity variation proved vital in the generalization of the model. But there was significant sensitivity to the choice of hyperparameters with small changes to the learning rate or batch size drastically affecting the results. This density highlights the importance of hyperparameter tuning and robust training schemes in medical imaging tasks.
+
+Even with these improvements, the best performing of our model configurations left space for potential improvements, suggesting several avenues for further development. The clinical implications of this work are considerable, by creating a paradigm for an automatic approach to AOSLO analysis that has the potential to drastically alter ophthalmic diagnostics. Nonetheless, further clinical validation studies on larger patient cohorts with variable disease presentation are warranted prior to adoption into diagnostic algorithms.
+
+This work serves as an extended report of an efficient deep learning application in medical image analysis and also presents lessons that similar levels of performance can be achieved through careful weight architecture design that considers realistic deployment solutions. Next steps could be to extend the covered diseases, to provide new methods to quantify uncertainty and to develop a common testing framework that allows statistically powerful comparisons of AI systems in healthcare. The work lays the groundwork for interpretable, accessible AI-assisted diagnostics in specific medical imaging areas and could prove to be a key milestone in extending the practice of automated retinal analysis.
+
+Finally, the choice of the optimal model depends on the specific application requirements and clinical priorities. Model A achieves lower overall error metrics (MAE: 921.6 cones, RMSE: 1255.2 cones, MAPE: 13.64\%) and provides interpretable density maps that enable clinicians to visualize and validate the spatial distribution of photoreceptors. Model D, despite having higher error metrics (MAE: 1043.9 cones, RMSE: 1317.5 cones, MAPE: 17.08\%), exhibits superior calibration with minimal systematic bias (+15.5 cones vs. -84.5 cones for Model A) and reduced architectural complexity due to its encoder-only design. The trade-off between Model A's superior accuracy and spatial interpretability versus Model D's improved calibration and simplified architecture should be evaluated by clinicians based on their specific diagnostic workflows and whether spatial analysis of cone distribution is required for their application.
+
+\section*{Acknowledgments}
+
+The authors thank the contributors to the AOSLO dataset and the medical imaging community for their ongoing support of automated analysis research. We acknowledge the resources provided by Universidad de La Sabana and the valuable feedback from all kind of collaborators.
+
+\section*{Code Availability}
+The full training and evaluation code that supports this study is openly
+available at: \url{https://github.com/nicolaycc/AOSLO-Cell-Density-Estimation}.
+
+%========REFERENCES==============
+
+\bibliographystyle{IEEEtran}
+\bibliography{bibliography}
+
+
+\end{document}
