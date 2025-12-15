@@ -57,19 +57,45 @@ This study addresses these limitations by proposing and evaluating four lightwei
 
 \section{Problem and research questions}
 
-\subsection{Problem}
+\subsection{Problem Formulation}
 
-The challenge lies in the inefficiency and technical challenges in accurately estimating cell density within AOSLO-like images, crucial for diagnosing genetic eye diseases. The cone counting process is performed by a medical professional and is very manual, so it takes a long time to get the results.
+We formulate cone density estimation as a supervised learning problem. Let $\mathcal{X} \subset \mathbb{R}^{256 \times 256 \times 3}$ denote the space of RGB AOSLO retinal images, where each image $\mathbf{x} \in \mathcal{X}$ captures cone photoreceptors at cellular resolution with fixed spatial dimensions of 256×256 pixels and three color channels.
 
-The current models that develop this task have complex architectures and require high computational resources, this limits the application of this kind of models in clinical and research environments in which high efficiency is needed.
+Given a labeled training dataset $\mathcal{D} = \{(\mathbf{x}_i, \mathbf{y}_i)\}_{i=1}^{n}$ of $n$ AOSLO images paired with expert-annotated ground truth, we consider two related problem formulations corresponding to different architectural approaches:
 
-With this situation, we need to develop lighter solutions that keep the accuracy as good as the existing models but reducing its complexity to make the practical implementation more easy. Overcoming these obstacles is vital to enable more reliable and efficient cell density estimation, facilitating earlier disease detection and treatment, thereby advancing ophthalmic medical care.
+\textbf{Problem 1 (Density Map Regression):}
+Learn a mapping $f_{\theta}: \mathcal{X} \rightarrow \mathcal{Y}_{\text{map}}$, where $\mathcal{Y}_{\text{map}} \subset \mathbb{R}^{256 \times 256}$ is the space of continuous density maps. Each ground truth density map $\mathbf{D} \in \mathcal{Y}_{\text{map}}$ encodes the spatial distribution of cone photoreceptors, with pixel-wise densities scaled by a factor of 100. The total cone count is recovered via spatial integration: $C = \sum_{i,j} D_{i,j} / 100$. Models A and B adopt this formulation and minimize the pixel-wise mean squared error:
+$$
+L_{\text{density}}(\theta) = \frac{1}{n} \sum_{k=1}^{n} \|\mathbf{D}_k - f_{\theta}(\mathbf{x}_k)\|^2_2
+$$
 
-\subsection{Research Questions}
+\textbf{Problem 2 (Direct Count Regression):}
+Learn a mapping $g_{\phi}: \mathcal{X} \rightarrow \mathcal{Y}_{\text{count}} \subset \mathbb{R}^{+}$, where $\mathcal{Y}_{\text{count}}$ is the space of non-negative scalar cone counts. Ground truth counts $C_k \in \mathcal{Y}_{\text{count}}$ are derived from expert annotations. Models C and D directly regress cone counts and minimize:
+$$
+L_{\text{count}}(\phi) = \frac{1}{n} \sum_{k=1}^{n} (C_k - g_{\phi}(\mathbf{x}_k))^2
+$$
+
+In both formulations, we seek to learn network parameters ($\theta$ or $\phi$) that minimize the respective loss function while maintaining low computational complexity (model size $< 600$K parameters) to facilitate clinical deployment.
+
+\subsection{Motivation and Constraints}
+
+The challenge lies in developing cone density estimation methods that are simultaneously accurate, efficient, and clinically deployable. Current manual counting by medical professionals is time-intensive and error-prone, while existing automated models (e.g., CoDE with 2.06M parameters) require substantial computational resources that limit their application in clinical and research environments.
+
+This work addresses the need for lightweight solutions that maintain accuracy comparable to complex state-of-the-art models while significantly reducing architectural complexity. By optimizing network design for computational efficiency, we aim to make automated AOSLO analysis more practical for clinical implementation, thereby enabling earlier disease detection and treatment.
+
+\subsection{New Research Questions}
+\begin{itemize}
+    \item \textbf{RQ1:} Can lightweight deep learning architectures ($< 600$K parameters) achieve comparable accuracy to state-of-the-art models (2.06M+ parameters) for cone density estimation in AOSLO images?
+    \item \textbf{RQ2:} How do density-map regression (Problem 1) and direct count regression (Problem 2) approaches compare in terms of accuracy, computational efficiency, and clinical utility?
+    \item \textbf{RQ3:} What are the critical architectural design choices (encoder-decoder depth, skip connections, output representations) that balance model complexity with estimation accuracy?
+\end{itemize}
+
+\subsection{Old Research Questions}
 \begin{itemize}
     \item How to employ image processing and deep learning techniques to improve cell density estimation in AOSLO-like images?
     \item What are the current challenges and limitations in cell density estimation using AOSLO-like images?
     \item Is it possible to maintain comparable performance to more complex models by using an optimized, lighter architecture for cone density estimation?
+\end{itemize}
 \end{itemize}
 
 
