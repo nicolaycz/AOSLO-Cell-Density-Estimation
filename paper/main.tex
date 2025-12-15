@@ -64,13 +64,17 @@ We formulate cone density estimation as a supervised learning problem. Let $\mat
 Given a labeled training dataset $\mathcal{D} = \{(\mathbf{x}_i, \mathbf{y}_i)\}_{i=1}^{n}$ of $n$ AOSLO images paired with expert-annotated ground truth, we consider two related problem formulations corresponding to different architectural approaches:
 
 \textbf{Problem 1 (Density Map Regression):}
-Learn a mapping $f_{\theta}: \mathcal{X} \rightarrow \mathcal{Y}_{\text{map}}$, where $\mathcal{Y}_{\text{map}} \subset \mathbb{R}^{256 \times 256}$ is the space of continuous density maps. Each ground truth density map $\mathbf{D} \in \mathcal{Y}_{\text{map}}$ encodes the spatial distribution of cone photoreceptors, with pixel-wise densities scaled by a factor of 100. The total cone count is recovered via spatial integration: $C = \sum_{i,j} D_{i,j} / 100$. Models A and B adopt this formulation and minimize the pixel-wise mean squared error:
+Learn a mapping $f_{\theta}: \mathcal{X} \rightarrow \mathcal{Y}_{\text{map}}$, where $\mathcal{Y}_{\text{map}} \subset \mathbb{R}^{256 \times 256}$ is the space of continuous density maps. For each training example $(\mathbf{x}_i, \mathbf{y}_i)$, the label $\mathbf{y}_i = \mathbf{D}_i \in \mathbb{R}^{256 \times 256}$ is a ground truth density map encoding the spatial distribution of cone photoreceptors, with pixel-wise densities scaled by a factor of 100. The total cone count is recovered via spatial integration: $C = \sum_{i,j} D_{i,j} / 100$.
+
+This formulation preserves spatial information, enabling ophthalmologists to localize regions of cone photoreceptor loss for clinical interpretation and quality control. The pixel-wise supervision (256×256 labels per image) provides a richer training signal than scalar targets alone. Models A and B adopt this formulation and minimize the pixel-wise mean squared error:
 $$
 L_{\text{density}}(\theta) = \frac{1}{n} \sum_{k=1}^{n} \|\mathbf{D}_k - f_{\theta}(\mathbf{x}_k)\|^2_2
 $$
 
 \textbf{Problem 2 (Direct Count Regression):}
-Learn a mapping $g_{\phi}: \mathcal{X} \rightarrow \mathcal{Y}_{\text{count}} \subset \mathbb{R}^{+}$, where $\mathcal{Y}_{\text{count}}$ is the space of non-negative scalar cone counts. Ground truth counts $C_k \in \mathcal{Y}_{\text{count}}$ are derived from expert annotations. Models C and D directly regress cone counts and minimize:
+Learn a mapping $g_{\phi}: \mathcal{X} \rightarrow \mathcal{Y}_{\text{count}} \subset \mathbb{R}^{+}$, where $\mathcal{Y}_{\text{count}}$ is the space of non-negative scalar cone counts. For each training example $(\mathbf{x}_i, \mathbf{y}_i)$, the label $\mathbf{y}_i = C_i \in \mathbb{R}^{+}$ is a scalar value representing the total cone count, computed from the ground truth density map as $C_i = \sum_{j,k} D_{i,j,k} / 100$.
+
+This formulation bypasses intermediate density representations, maximizing computational efficiency when only total count is required. By predicting counts directly, encoder-only architectures (without decoders) can reduce parameters by up to 71\% while maintaining count accuracy. Models C and D directly regress cone counts and minimize:
 $$
 L_{\text{count}}(\phi) = \frac{1}{n} \sum_{k=1}^{n} (C_k - g_{\phi}(\mathbf{x}_k))^2
 $$
@@ -180,6 +184,68 @@ From the complete dataset, we selected 184 images for model development and vali
 
 To enhance dataset diversity and improve model generalization, we implemented several data augmentation techniques during training. These included random rotations within ±15° to account for natural variations in image orientation, horizontal and vertical flips to increase spatial diversity, and intensity variations to simulate realistic imaging condition fluctuations. These augmentation strategies were designed to increase the effective training dataset size while maintaining biological plausibility of the augmented images.
 
+\subsection{Loss Functions}
+
+The four proposed models adopt different training objectives depending on their output representations. This subsection formalizes the loss functions used to optimize each model, clarifying the distinction between models that predict density maps versus those that predict scalar counts.
+
+\subsubsection{Pixel-wise Density Loss (Models A \& B)}
+
+Models A and B employ a U-Net encoder-decoder architecture that outputs spatial density maps. These models optimize pixel-level mean squared error across the entire 256×256 output grid:
+\begin{equation}
+\mathcal{L}_{\text{density}}(\theta) = \frac{1}{n} \sum_{k=1}^{n} \frac{1}{HW} \sum_{i=1}^{H} \sum_{j=1}^{W} \left( D_k(i,j) - \hat{D}_\theta(\mathbf{x}_k)(i,j) \right)^2
+\label{eq:loss_density}
+\end{equation}
+where $H = W = 256$ are the spatial dimensions, $D_k(i,j)$ is the ground truth density at pixel $(i,j)$ in image $k$, and $\hat{D}_\theta(\mathbf{x}_k)(i,j)$ is the corresponding predicted density value. The normalization factor $\frac{1}{HW}$ ensures that the loss magnitude is independent of image resolution.
+
+This pixel-wise loss provides rich supervision signal across $256 \times 256 = 65{,}536$ spatial locations per image, enabling the network to learn local density patterns. Total cone counts are extracted post-training via spatial summation: $\hat{C} = \sum_{i,j} \hat{D}(i,j)$.
+
+\subsubsection{Count-level Loss (Models C \& D)}
+
+Models C and D directly predict scalar cone counts without intermediate density representations. Both optimize mean squared error on the final count prediction:
+\begin{equation}
+\mathcal{L}_{\text{count}}(\phi) = \frac{1}{n} \sum_{k=1}^{n} \left( C_k - \hat{C}_\phi(\mathbf{x}_k) \right)^2
+\label{eq:loss_count}
+\end{equation}
+where $C_k = \sum_{i,j} D_k(i,j) / 100$ is the ground truth cone count derived from the expert-annotated density map, and $\hat{C}_\phi(\mathbf{x}_k) \in \mathbb{R}^{+}$ is the scalar count predicted by the network.
+
+This count-level formulation provides a single scalar supervision signal per image. While less spatially rich than Equation~\ref{eq:loss_density}, it directly optimizes the clinical endpoint (total count) and enables encoder-only architectures that bypass decoder computation entirely.
+
+\subsubsection{Two-Stage Training (Model B)}
+
+Model B employs a hybrid two-stage training strategy combining density map learning with post-hoc linear correction:
+
+\textbf{Stage 1:} Train a U-Net to predict density maps using $\mathcal{L}_{\text{density}}(\theta)$ (Equation~\ref{eq:loss_density}).
+
+\textbf{Stage 2:} Fix the trained network $\hat{D}_\theta(\mathbf{x})$ and fit a linear correction to the extracted counts on the training set. Let $\tilde{C}_k = \sum_{i,j} \hat{D}_\theta(\mathbf{x}_k)(i,j)$ be the raw count from the density map. The corrected prediction is:
+\begin{equation}
+\hat{C}_{\text{corrected}}(\mathbf{x}_k) = \alpha \cdot \tilde{C}_k + \beta
+\label{eq:linear_correction}
+\end{equation}
+where $\alpha, \beta \in \mathbb{R}$ are learned via ordinary least-squares regression:
+$$
+(\alpha^*, \beta^*) = \underset{\alpha, \beta}{\arg\min} \sum_{k=1}^{n_{\text{train}}} \left( C_k - (\alpha \cdot \tilde{C}_k + \beta) \right)^2
+$$
+
+This two-stage approach mitigates systematic biases in summed density predictions, improving count accuracy without retraining the U-Net backbone.
+
+\subsubsection{Architectural Rationale}
+
+The choice between density map and count-level formulations involves trade-offs between clinical interpretability, computational efficiency, and training signal richness:
+
+\begin{itemize}
+\item \textbf{Decoder preservation (Models A \& B):} The encoder-decoder architecture produces interpretable spatial density maps, enabling ophthalmologists to:
+  \begin{enumerate}
+  \item Localize regions of cone photoreceptor loss for disease staging
+  \item Perform quality control by visually inspecting prediction artifacts
+  \item Benefit from richer pixel-wise supervision (65,536 labels per image vs. 1 scalar)
+  \end{enumerate}
+  This spatial information is clinically valuable for diagnosis beyond simple cone counts, justifying the additional decoder parameters.
+
+\item \textbf{Decoder elimination (Model D):} When only total count is required and spatial localization is unnecessary, an encoder-only architecture with global average pooling achieves comparable count accuracy while reducing parameters by 71\% relative to U-Net models. This maximizes computational efficiency for count-only deployment scenarios.
+
+\item \textbf{Hybrid evaluation (Model C):} Model C tests whether a U-Net trained with count-level loss (Equation~\ref{eq:loss_count}) can match the performance of pixel-wise trained U-Nets (Models A/B). The embedded global sum layer ($\hat{C} = \sum_{i,j} \hat{D}(i,j)$) makes count optimization differentiable while preserving decoder structure. Experimental results (Section IV) demonstrate that pixel-wise supervision provides stronger training signal than count-level supervision alone, even when decoder capacity is available.
+\end{itemize}
+
 \subsection{Proposed Architectures}
 
 This work presents four alternative models for cone counting in images obtained through Adaptive Optics Scanning Laser Ophthalmoscopy (AOSLO), using the baseline model \textit{Cone Density Estimation} (CoDE) proposed by Toledo~\cite{ToledoCortes2023} as a starting point.
@@ -190,7 +256,7 @@ All models were trained using AOSLO images accompanied by manual annotations con
 
 Following the approach of the baseline model, this architecture aims to estimate the number of cones by predicting a density map for each AOSLO image. This map is generated from the cone centroid coordinates and can be spatially integrated to obtain the total number of cones in the image.
 
-Compared to the CoDE model, this architecture is simplified, providing an advantage particularly when training with a smaller dataset.
+Model A is trained using pixel-wise MSE loss (Equation~\ref{eq:loss_density}) on density maps, providing spatially rich supervision across all 65,536 pixels. Compared to the CoDE model, this architecture is simplified, providing an advantage particularly when training with a smaller dataset.
 
 \begin{itemize}
     \item \textbf{Encoder}: Three downsampling blocks with 16, 32, and 64 filters respectively
@@ -216,7 +282,7 @@ Model A architecture is shown on Fig~\ref{fig_modelA}.
 
 \subsubsection{Model B: Lightweight U-Net with Linear Correction}
 
-Extends Model A with post-hoc linear regression to correct systematic counting errors. The correction layer learns a linear transformation applied to the integrated density map, compensating for consistent over- or under-estimation patterns.
+Extends Model A with post-hoc linear regression to correct systematic counting errors. Model B employs a two-stage training approach (see Equation~\ref{eq:linear_correction}): first training with pixel-wise MSE (Equation~\ref{eq:loss_density}), then applying a linear correction to mitigate systematic bias in total counts. The correction layer learns a linear transformation applied to the integrated density map, compensating for consistent over- or under-estimation patterns.
 
 \begin{itemize}
 \item Same base architecture as Model A
@@ -226,18 +292,18 @@ Extends Model A with post-hoc linear regression to correct systematic counting e
 
 \subsubsection{Model C: Integrated Global-Sum Regression}
 
-Incorporates regression directly into the network architecture through a global-sum layer operating on the density map. This approach enables end-to-end training of both density estimation and count regression, theoretically providing better optimization.
+Incorporates regression directly into the network architecture through a global-sum layer operating on the density map. This approach enables end-to-end training for count prediction using a U-Net architecture. Model C is trained using count-level MSE (Equation~\ref{eq:loss_count}), with the global sum operation embedded as a differentiable layer within the network.
 
 \begin{itemize}
-\item Base U-Net architecture
-\item Global sum layer: $\hat{C} = \sum_{i,j} \hat{D}_{i,j}$
+\item Base U-Net architecture producing intermediate density map
+\item Global sum layer (differentiable): $\hat{C} = \sum_{i,j} \hat{D}_{i,j}$
 \item Dense layer with single neuron for final count
-\item Joint loss: $L = L_{density} + \lambda L_{count}$ where $\lambda = 0.01$
+\item Trained with count-level MSE loss on scalar outputs
 \end{itemize}
 
 \subsubsection{Model D: Direct Regression}
 
-Eliminates density map prediction entirely, using only the encoder to directly regress cone count. This approach minimizes parameters and computational requirements but sacrifices spatial interpretability.
+Eliminates density map prediction entirely, using only the encoder to directly regress cone count. Model D is trained using count-level MSE (Equation~\ref{eq:loss_count}), predicting counts directly without intermediate density representations. This approach minimizes parameters and computational requirements but sacrifices spatial interpretability.
 
 \begin{itemize}
 \item Encoder-only architecture
@@ -250,15 +316,17 @@ Eliminates density map prediction entirely, using only the encoder to directly r
 
 All models were trained using the best configuration for each one:
 \begin{itemize}
-    \item Optimizer: Adam with learning rate 1×10⁻³
-    \item Batch size: 8 images per batch
-    \item Loss function: Mean Squared Error (MSE)
-    \item Learning rate scheduling: ReduceLROnPlateau (factor=0.7, patience=5)
-    \item Early stopping: Patience=20 epochs based on validation MSE
-    \item Hardware: GPU T4 - Google Colab
+    \item \textbf{Loss Functions:} Models A/B use pixel-wise MSE (Equation~\ref{eq:loss_density}) on 256×256 density maps; Models C/D use count-level MSE (Equation~\ref{eq:loss_count}) on scalar counts. Model B additionally applies post-hoc linear regression (Equation~\ref{eq:linear_correction}).
+    \item \textbf{Optimizer:} Adam with learning rate 1×10⁻³ (1×10⁻⁴ for Model B fine-tuning)
+    \item \textbf{Batch size:} 8 images per batch
+    \item \textbf{Learning rate scheduling:} ReduceLROnPlateau (factor=0.7, patience=5)
+    \item \textbf{Early stopping:} Patience=20 epochs based on validation loss
+    \item \textbf{Hardware:} GPU T4 - Google Colab
 \end{itemize}
 
 \subsection{Evaluation Metrics}
+
+All models are evaluated using count-level metrics, as clinical diagnosis depends on total cone density rather than pixel-level accuracy. For Models A and B, which output density maps, counts are extracted post-hoc via summation: $\hat{C} = \sum_{i,j} \hat{D}(i,j)$. Models C and D predict counts directly. The evaluation metrics $y_i$ and $\hat{y}_i$ represent ground truth and predicted cone counts, respectively.
 
 Model performance was assessed using multiple metrics:
 \begin{itemize}
@@ -273,7 +341,8 @@ Model performance was assessed using multiple metrics:
 \end{itemize}
 
 \subsection{Quantitative Performance}
-Table~\ref{tab:metrics_models} shows the quantitative performance of each model.
+
+Table~\ref{tab:metrics_models} reports mean absolute error (\textbf{MAE}), mean squared error (\textbf{MSE}), root--mean--squared error (\textbf{RMSE}) and mean absolute percentage error (\textbf{MAPE}) with respect to the ground–truth cone count. Among the proposed variants, \textbf{Model~A} (mini U--Net) and \textbf{Model~B} (mini U--Net~+~linear correction) achieve the lowest numerical error: an average absolute deviation of only $\approx0.28$~cones per $256\times256$ crop---well within the inter--grader variability reported by Cunefare\,\cite{Cunefare2017}. In contrast, \textbf{Model~C} (global--sum regression in--graph) diverged during training, resulting in grossly overestimated counts (MAPE~$>92\%$). \textbf{Model~D} (direct scalar regression) remained stable but lost spatial supervision and therefore exhibited higher RMSE compared with Model~A.
 
 \begin{table*}[!b]
 \centering
@@ -438,10 +507,6 @@ Serialized model size (MB) &
 \hline
 \end{tabular}
 \end{sidewaystable*}
-
-Table~\ref{tab:metrics_models} reports mean absolute error (\textbf{MAE}), mean squared error (\textbf{MSE}), root--mean--squared error (\textbf{RMSE}) and mean absolute percentage error (\textbf{MAPE}) with respect to the ground–truth cone count. Among the proposed variants, \textbf{Model~A} (mini U--Net) and \textbf{Model~B} (mini U--Net~+~linear correction) achieve the lowest numerical error: an average absolute deviation of only $\approx0.28$~cones per $256\times256$ crop---well within the inter--grader variability reported by Cunefare\,\cite{Cunefare2017}. In contrast, \textbf{Model~C} (global--sum regression in--graph) diverged during training, resulting in grossly overestimated counts (MAPE~$>92\%$). \textbf{Model~D} (direct scalar regression) remained stable but lost spatial supervision and therefore exhibited higher RMSE compared with Model~A.
-
-
 
 \section{Discussion}
 
