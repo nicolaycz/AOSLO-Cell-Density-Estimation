@@ -228,7 +228,9 @@ $$
 
 This two-stage approach mitigates systematic biases in summed density predictions, improving count accuracy without retraining the U-Net backbone.
 
-\subsubsection{Architectural Rationale}
+\subsubsection{Architectural Rationale}\label{sec:arch_rationale}
+
+\textbf{Motivation for decoder-based architectures:} Recent literature on explainable AI in medical imaging suggests that spatial interpretability may enhance clinician trust and facilitate clinical validation~\cite{Amann2020,Antoniadi2021}. Unlike black-box regression models that output only scalar counts, density map predictions provide spatial information that clinicians can visually compare against original AOSLO images. This motivated our decision to preserve decoder architectures in Models A, B, and C, despite the additional computational cost, while also exploring a decoder-free baseline (Model D) to quantify the efficiency-interpretability trade-off.
 
 The choice between density map and count-level formulations involves trade-offs between clinical interpretability, computational efficiency, and training signal richness:
 
@@ -516,7 +518,7 @@ The success of simplified architectures in this work has significant implication
 
 The computational efficiency of these models enables real-time analysis during patient scanning and expedites quick clinical decisions. Such an ability is essential for clinical workflows where time in diagnostics can determine the course of treatment. The method also provides for larger patient cohorts to be screened for population studies and longitudinal monitoring programs, expanding the scope of large-scale research initiatives.
 
-As opposed to the black box models, by providing spatial information through the density map outputs, here, the clinicians may interpret and validate the description further kept clinically meaningful. The interpretability is essential for its clinical adoption since it makes the conclusion of automated analysis perceivable and testable by doctors, resulting in trust of AI-assisted diagnostics.
+As opposed to the black box models, by providing spatial information through the density map outputs, here, the clinicians may interpret and validate the description further kept clinically meaningful. As motivated in the Architectural Rationale (\S\ref{sec:arch_rationale}), spatial density map outputs enable clinicians to interpret and validate predictions, addressing a key limitation of black-box regression models. While formal clinical validation studies are needed to confirm this benefit in AOSLO workflows specifically, the broader medical AI literature suggests that such interpretability may be essential for clinical adoption~\cite{Amann2020,Antoniadi2021}, as it makes automated analysis perceivable and testable by clinicians, potentially enhancing trust in AI-assisted diagnostics.
 
 \subsection{Advantages of Simplified Architectures}
 
