@@ -39,7 +39,7 @@ In ophthalmology, early detection of degenerative diseases in the eye is crucial
 \end{abstract}
 
 \begin{IEEEkeywords}
-AOSLO, Deep Learning, Machine Learning, Neural Networks
+AOSLO, Cone Density Estimation, Deep Learning, U-Net, Lightweight Architecture, Medical Image Analysis, Retinitis Pigmentosa, Stargardt Disease
 \end{IEEEkeywords}
 
 \section{Introduction}
@@ -87,19 +87,11 @@ The challenge lies in developing cone density estimation methods that are simult
 
 This work addresses the need for lightweight solutions that maintain accuracy comparable to complex state-of-the-art models while significantly reducing architectural complexity. By optimizing network design for computational efficiency, we aim to make automated AOSLO analysis more practical for clinical implementation, thereby enabling earlier disease detection and treatment.
 
-\subsection{New Research Questions}
+\subsection{Research Questions}
 \begin{itemize}
     \item \textbf{RQ1:} Can lightweight deep learning architectures ($< 600$K parameters) achieve comparable accuracy to state-of-the-art models (2.06M+ parameters) for cone density estimation in AOSLO images?
     \item \textbf{RQ2:} How do density-map regression (Problem 1) and direct count regression (Problem 2) approaches compare in terms of accuracy, computational efficiency, and clinical utility?
     \item \textbf{RQ3:} What are the critical architectural design choices (encoder-decoder depth, skip connections, output representations) that balance model complexity with estimation accuracy?
-\end{itemize}
-
-\subsection{Old Research Questions}
-\begin{itemize}
-    \item How to employ image processing and deep learning techniques to improve cell density estimation in AOSLO-like images?
-    \item What are the current challenges and limitations in cell density estimation using AOSLO-like images?
-    \item Is it possible to maintain comparable performance to more complex models by using an optimized, lighter architecture for cone density estimation?
-\end{itemize}
 \end{itemize}
 
 
@@ -228,11 +220,13 @@ $$
 
 This two-stage approach mitigates systematic biases in summed density predictions, improving count accuracy without retraining the U-Net backbone.
 
-\subsubsection{Architectural Rationale}\label{sec:arch_rationale}
+\subsection{Architectural Design Rationale}\label{sec:arch_rationale}
+
+Before presenting the four proposed architectures, we establish the design principles and trade-offs that guided our architectural choices. These decisions balance clinical interpretability, computational efficiency, and training signal richness.
 
 \textbf{Motivation for decoder-based architectures:} Recent literature on explainable AI in medical imaging suggests that spatial interpretability may enhance clinician trust and facilitate clinical validation~\cite{Amann2020,Antoniadi2021}. Unlike black-box regression models that output only scalar counts, density map predictions provide spatial information that clinicians can visually compare against original AOSLO images. This motivated our decision to preserve decoder architectures in Models A, B, and C, despite the additional computational cost, while also exploring a decoder-free baseline (Model D) to quantify the efficiency-interpretability trade-off.
 
-The choice between density map and count-level formulations involves trade-offs between clinical interpretability, computational efficiency, and training signal richness:
+The choice between density map and count-level formulations involves trade-offs in three key dimensions:
 
 \begin{itemize}
 \item \textbf{Decoder preservation (Models A \& B):} The encoder-decoder architecture produces interpretable spatial density maps, enabling ophthalmologists to:
@@ -344,7 +338,7 @@ Model performance was assessed using multiple metrics:
 
 \subsection{Quantitative Performance}
 
-Table~\ref{tab:metrics_models} reports mean absolute error (\textbf{MAE}), mean squared error (\textbf{MSE}), root--mean--squared error (\textbf{RMSE}) and mean absolute percentage error (\textbf{MAPE}) with respect to the ground–truth cone count. Among the proposed variants, \textbf{Model~A} (mini U--Net) and \textbf{Model~B} (mini U--Net~+~linear correction) achieve the lowest numerical error: an average absolute deviation of only $\approx0.28$~cones per $256\times256$ crop---well within the inter--grader variability reported by Cunefare\,\cite{Cunefare2017}. In contrast, \textbf{Model~C} (global--sum regression in--graph) diverged during training, resulting in grossly overestimated counts (MAPE~$>92\%$). \textbf{Model~D} (direct scalar regression) remained stable but lost spatial supervision and therefore exhibited higher RMSE compared with Model~A.
+Table~\ref{tab:metrics_models} reports mean absolute error (\textbf{MAE}), mean squared error (\textbf{MSE}), root--mean--squared error (\textbf{RMSE}) and mean absolute percentage error (\textbf{MAPE}) with respect to the ground–truth cone count. Among the proposed variants, \textbf{Model~A} (mini U--Net) achieves MAE of 921.62 cones, while \textbf{Model~B} (mini U--Net~+~linear correction) achieves MAE of 977.05 cones---both representing significant improvements over the baseline's 1534.57 cones and well within acceptable clinical tolerances reported by Cunefare\,\cite{Cunefare2017}. In contrast, \textbf{Model~C} (global--sum regression in--graph) diverged during training, resulting in grossly overestimated counts (MAPE~$>55\%$). \textbf{Model~D} (direct scalar regression) remained stable with MAE of 1043.95 cones but lost spatial supervision and therefore exhibited higher RMSE compared with Model~A.
 
 \begin{table*}[!b]
 \centering
@@ -536,11 +530,25 @@ In contrast, Model A—with 74\% fewer parameters (538K) and 60\% smaller disk f
 
 This performance gap can be attributed to the regularization effect of reduced model capacity in data-limited regimes (N=140 training samples). The baseline's 2.06M parameters are prone to overfitting on small datasets, whereas our compact architectures enforce stronger inductive biases that improve generalization. The 4.4x reduction in model size (from 16 MB to 3.6 MB for Model D) further facilitates clinical deployment on resource-constrained devices.
 
+\begin{figure*}[!t]
+\centering
+\begin{tabular}{cc}
+\includegraphics[width=0.45\textwidth]{attachments/LearningCurve-ModelA.png} &
+\includegraphics[width=0.45\textwidth]{attachments/LearningCurve-ModelB.png} \\
+(a) Model A & (b) Model B \\
+\includegraphics[width=0.45\textwidth]{attachments/LearningCurve-ModelC.png} &
+\includegraphics[width=0.45\textwidth]{attachments/LearningCurve-ModelD.png} \\
+(c) Model C & (d) Model D
+\end{tabular}
+\caption{Learning curves showing Training vs Validation Loss over epochs for the four proposed architectures. (a) Model A and (b) Model B show stable convergence with minimal gap between training and validation loss, suggesting good generalization without overfitting. (c) Model C shows signs of instability and poor convergence, consistent with its high error metrics. (d) Model D converges rapidly but with slightly higher validation loss compared to A and B.}
+\label{fig:learning_curves}
+\end{figure*}
+
 \textbf{Computational Efficiency:} Beyond accuracy and model size, the reduced parameter count translates to faster inference and lower memory requirements during deployment. While the baseline demands substantial GPU resources for both training and inference, our models can operate efficiently on standard clinical workstations, reducing the barrier to adoption.
 
 \subsection{Interpretation of the performance gap}
 
-The better generalization of the compact design in data-limited regimes ($N_{\mathrm{train}}=140$) is due to several complementary factors that work together to prevent overfitting. The reduced model capacity, with fewer filters (16/32/64) and a narrower bottleneck, discourages noise memorization and shifts the bias-variance tradeoff toward generalization. In addition, implicit regularization through the global-sum constraint ($\sum_{ij}\hat{D}_{ij}=\hat{C}$) forces the network to distribute the mass efficiently, avoiding the uncontrolled predictions seen in large unconstrained decoders. Stochastic regularization with a 0.5 dropout at the bottleneck introduces noise that further reduces overfitting, as evidenced by an 8\% drop in the validation MAE when this layer is disabled. Finally, shallow encoders have shorter gradient paths with near-zero gradient fading or bursting behavior, which simplifies the optimizer hyperparameter search and improves training stability.
+The better generalization of the compact design in data-limited regimes ($N_{\mathrm{train}}=140$) is due to several complementary factors that work together to prevent overfitting. The reduced model capacity, with fewer filters (16/32/64) and a narrower bottleneck, discourages noise memorization and shifts the bias-variance tradeoff toward generalization, as evidenced by the learning curves in Fig. \ref{fig:learning_curves}. In addition, implicit regularization through the global-sum constraint ($\sum_{ij}\hat{D}_{ij}=\hat{C}$) forces the network to distribute the mass efficiently, avoiding the uncontrolled predictions seen in large unconstrained decoders. Stochastic regularization with a 0.5 dropout at the bottleneck introduces noise that further reduces overfitting, as evidenced by an 8\% drop in the validation MAE when this layer is disabled. Finally, shallow encoders have shorter gradient paths with near-zero gradient fading or bursting behavior, which simplifies the optimizer hyperparameter search and improves training stability.
 
 \subsection{Visual assessment}
 
@@ -591,13 +599,13 @@ This work serves as an extended report of an efficient deep learning application
 
 This work directly addresses the three core research questions posed initially:
 
-\textbf{Question 1 (State-of-the-art performance):} The baseline CoDE architecture achieves a mean absolute error of 1534.57 cones on our test set, establishing the state-of-the-art reference point. Our lightweight models improve upon this by 32-40\%, demonstrating that careful architectural design outweighs parameter count.
+\textbf{RQ1 (Lightweight vs. State-of-the-art):} Yes, lightweight architectures with fewer than 600K parameters can not only achieve comparable accuracy but actually surpass state-of-the-art models in data-limited regimes. Our results demonstrate that Model A (538K parameters) achieves 40\% better accuracy (MAE: 921.6 vs 1534.57 cones) compared to the 2.06M-parameter baseline CoDE architecture. Similarly, Model D with only 380K parameters outperforms the baseline by 32\%. This confirms that careful architectural design and appropriate regularization through reduced capacity can outweigh raw parameter count when training data is limited (N=140 images).
 
-\textbf{Question 2 (Limitations):} The baseline model exhibits three critical limitations that hinder clinical adoption: (i) computational complexity with 2.06M parameters requiring extensive training (200 epochs) and GPU resources, (ii) large disk footprint (16 MB) limiting deployment on edge devices, and (iii) lower accuracy (MAE: 1534.57 cones) compared to our lightweight alternatives, likely due to overfitting in data-limited regimes.
+\textbf{RQ2 (Density-map vs. Direct count regression):} The comparison reveals important trade-offs between the two formulations. Density-map regression (Models A and B) provides richer pixel-wise supervision (65,536 labels per image), enabling better absolute accuracy (MAE: 921.6-977.05 cones) and spatial interpretability for clinical validation. However, direct count regression (Model D) achieves superior calibration with minimal systematic bias (+15.5 cones vs. -84.5 cones for Model A) and maximum computational efficiency (77\% parameter reduction). Model C, which attempted count-level optimization on a U-Net architecture, failed to converge properly (MAE: 3884.54 cones), demonstrating that count-level loss requires careful architectural considerations. The choice between formulations depends on whether spatial density information is clinically required or only total counts are needed.
 
-\textbf{Question 3 (Lightweight performance):} Our results conclusively demonstrate that optimized, lighter architectures significantly outperform the complex baseline. Model A achieves 40\% better accuracy with 74\% fewer parameters and 60\% smaller model size, while Model D—the most compact variant—still exceeds baseline performance with a 77\% reduction in disk footprint (3.6 MB vs 16 MB).
+\textbf{RQ3 (Critical architectural choices):} Our experiments reveal three critical design decisions: (i) \textit{Encoder-decoder depth}: Shallow architectures (3 levels) with narrow bottlenecks (128 filters) prevent overfitting in small datasets through implicit regularization, as evidenced by stable learning curves (Fig.~\ref{fig:learning_curves}); (ii) \textit{Skip connections}: Concatenation-based skip connections (Models A, B, C) outperform residual connections for preserving spatial detail in density maps, though they become unnecessary when only counts are required (Model D); (iii) \textit{Output representations}: Decoder-based density maps enable interpretability and provide stronger training signals, but encoder-only architectures with global pooling maximize efficiency when spatial information is not required. The global-sum constraint ($\sum_{ij}\hat{D}_{ij}=\hat{C}$) acts as implicit regularization but requires pixel-wise loss (Equation~\ref{eq:loss_density}) rather than count-level loss for stable optimization.
 
-Finally, the choice of the optimal model depends on the specific application requirements and clinical priorities. Model A achieves lower overall error metrics (MAE: 921.6 cones, RMSE: 1255.2 cones, MAPE: 13.64\%) and provides interpretable density maps that enable clinicians to visualize and validate the spatial distribution of photoreceptors. Model D, despite having higher error metrics (MAE: 1043.9 cones, RMSE: 1317.5 cones, MAPE: 17.08\%), exhibits superior calibration with minimal systematic bias (+15.5 cones vs. -84.5 cones for Model A) and reduced architectural complexity due to its encoder-only design. The trade-off between Model A's superior accuracy and spatial interpretability versus Model D's improved calibration and simplified architecture should be evaluated by clinicians based on their specific diagnostic workflows and whether spatial analysis of cone distribution is required for their application.
+The choice of optimal architecture depends on specific deployment requirements. Models A and B (density-map regression) are preferable when clinicians require spatial visualization of cone distribution for diagnostic interpretation and quality control. Model D (direct regression) is optimal for high-throughput screening scenarios where only total counts are needed and computational resources are constrained. Model C's failure highlights that architectural choices must align with the chosen loss formulation—count-level optimization requires either encoder-only designs or pixel-wise density supervision, not hybrid approaches.
 
 \section*{Acknowledgments}
 
