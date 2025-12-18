@@ -74,8 +74,9 @@ Learn a mapping $f_{\theta}: \mathcal{X} \rightarrow \mathcal{Y}_{\text{map}}$, 
 
 This formulation preserves spatial information, enabling ophthalmologists to localize regions of cone photoreceptor loss for clinical interpretation and quality control. The pixel-wise supervision (256×256 labels per image) provides a richer training signal than scalar targets alone. Models A and B adopt this formulation and minimize the pixel-wise mean squared error:
 $$
-L_{\text{density}}(\theta) = \frac{1}{n} \sum_{k=1}^{n} \|\mathbf{D}_k - f_{\theta}(\mathbf{x}_k)\|^2_2
+L_{\text{density}}(\theta) = \frac{1}{n} \sum_{k=1}^{n} \frac{1}{HW} \|\mathbf{D}_k - f_{\theta}(\mathbf{x}_k)\|^2_2
 $$
+where $H = W = 256$ are the spatial dimensions of the density maps.
 
 \textbf{Problem 2 (Direct Count Regression):}
 Learn a mapping $g_{\phi}: \mathcal{X} \rightarrow \mathcal{Y}_{\text{count}} \subset \mathbb{R}^{+}$, where $\mathcal{Y}_{\text{count}}$ is the space of non-negative scalar cone counts. For each training example $(\mathbf{x}_i, \mathbf{y}_i)$, the label $\mathbf{y}_i = C_i \in \mathbb{R}^{+}$ is a scalar value representing the total cone count, computed from the ground truth density map as $C_i = \sum_{j,k} D_{i,j,k} / 100$.
