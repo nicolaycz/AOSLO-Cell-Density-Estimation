@@ -131,7 +131,7 @@ In general, studies to perform AOSLO type image analysis using Machine Learning 
 The development and evaluation of advanced Adaptive Optics Scanning Laser Ophthalmoscopy (AOSLO) image analysis techniques have significantly enhanced cone counting and the diagnosis of ocular diseases. The following table provides a summary of the state-of-the-art research in this area, highlighting the focus and key findings of each study.
 
 \subsubsection{Baseline Model Performance}
-To establish a quantitative comparison baseline, we evaluated the CoDE architecture \cite{ToledoCortes2023} on the Dubis dataset partition. The baseline model employs an Xception-based U-Net with 2.06 million trainable parameters, extensive data augmentation, and requires training for 200 epochs. The model architecture and training protocol follow the specifications detailed in the original publication.
+The baseline model employs an Xception-based U-Net with 2.06 million trainable parameters, extensive data augmentation, and requires training for 200 epochs. The model architecture and training protocol follow the specifications detailed in the original publication.
 
 Performance evaluation on our test set yielded a mean absolute error of 1534.57 cones per image. Despite its architectural sophistication and computational demands (16 MB model size), the baseline's performance serves as the reference benchmark for evaluating our proposed lightweight alternatives.
 
@@ -390,7 +390,7 @@ The starting point was an Xception‑style residual encoder–decoder.The encode
 \renewcommand{\arraystretch}{1.25}
     \begin{tabular}{|p{2.8cm}|p{3.2cm}|p{3.2cm}|p{3.2cm}|p{3.2cm}|p{3.2cm}|}
       \hline
-\textbf{Aspect} & \textbf{Base Model (Residual Encoder-Decoder)} & \textbf{Model A (Lightweight U-Net)} & \textbf{Model B (Lightweight U-Net + Linear Regression)} & \textbf{Model C (Proposed U-Net + Global-Sum)} & \textbf{Model D (Encoder + GAP)} \\
+\textbf{Aspect} & \textbf{Base Model (Residual Encoder-Decoder)} & \textbf{Model A (Lightweight U-Net)} & \textbf{Model B (Lightweight U-Net + Linear Regression)} & \textbf{Model C (Proposed U-Net + Global-Sum)} & \textbf{Model D (Encoder + Global Average Pooling (GAP)} \\
 \hline\hline
 \textit{Backbone topology} &
 Xception-style encoder (32–256 depthwise-separable filters) with Conv2DTranspose \newline
