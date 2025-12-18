@@ -123,18 +123,18 @@ Since 2020, the community has increasingly adopted the density‑map regression 
 
 Toledo‑Cortés introduced CoDE \cite{ToledoCortes2023}, a U‑Net with an Xception backbone and a linear correction layer trained only on cone coordinates. CoDE reduced the mean counting bias by 35 percent compared with classical methods and, combined with spatial characteristics, achieved an F1 score of 0.77 to differentiate retinas from retinitis pigmentosa and Stargardt, showing that cone distribution patterns themselves are powerful disease biomarkers.
 
+More recent work has focused on reducing annotation cost and boosting robustness. The Attention‑Flow U‑Net of Kulyabin\cite{Kulyabin2024} adds spatial‑ and channel‑attention blocks plus flow‑vector outputs that separate touching cones, achieving F1$>$0.95 while requiring only sparsely annotated training data.
+
+In general, studies to perform AOSLO type image analysis using Machine Learning and Deep Learning techniques allow optimizing and automating the analysis process through cone counting. There are different methods to reach this estimation, however it is still required to improve the efficiency of the models through image processing techniques and a better neural network architecture.
+
+The development and evaluation of advanced Adaptive Optics Scanning Laser Ophthalmoscopy (AOSLO) image analysis techniques have significantly enhanced cone counting and the diagnosis of ocular diseases. The following table provides a summary of the state-of-the-art research in this area, highlighting the focus and key findings of each study.
+
 \subsubsection{Baseline Model Performance}
 To establish a quantitative comparison baseline, we evaluated the CoDE architecture \cite{ToledoCortes2023} on the Dubis dataset partition. The baseline model employs an Xception-based U-Net with 2.06 million trainable parameters, extensive data augmentation, and requires training for 200 epochs. The model architecture and training protocol follow the specifications detailed in the original publication.
 
 Performance evaluation on our test set yielded a mean absolute error of 1534.57 cones per image. Despite its architectural sophistication and computational demands (16 MB model size), the baseline's performance serves as the reference benchmark for evaluating our proposed lightweight alternatives.
 
 Table~\ref{tab:metrics_models} presents a detailed comparison of the baseline against our four proposed architectures, demonstrating that reduced complexity can outperform larger models in data-limited regimes.
-
-More recent work has focused on reducing annotation cost and boosting robustness. The Attention‑Flow U‑Net of Kulyabin\cite{Kulyabin2024} adds spatial‑ and channel‑attention blocks plus flow‑vector outputs that separate touching cones, achieving F1$>$0.95 while requiring only sparsely annotated training data.
-
-In general, studies to perform AOSLO type image analysis using Machine Learning and Deep Learning techniques allow optimizing and automating the analysis process through cone counting. There are different methods to reach this estimation, however it is still required to improve the efficiency of the models through image processing techniques and a better neural network architecture.
-
-The development and evaluation of advanced Adaptive Optics Scanning Laser Ophthalmoscopy (AOSLO) image analysis techniques have significantly enhanced cone counting and the diagnosis of ocular diseases. The following table provides a summary of the state-of-the-art research in this area, highlighting the focus and key findings of each study.
 
 % === TABLA DE DOBLE COLUMNA EN EL PIE DE PÁGINA ===
 \begin{table*}[!t]                     % table* = dos columnas ; [!b] = bottom
@@ -546,10 +546,9 @@ This performance gap can be attributed to the regularization effect of reduced m
 \includegraphics[width=0.45\textwidth]{attachments/LearningCurve-ModelD.png} \\
 (c) Model C & (d) Model D
 \end{tabular}
-\caption{Learning curves showing Training vs Validation Loss over epochs for the four proposed architectures. (a) Model A and (b) Model B show stable convergence with minimal gap between training and validation loss, suggesting good generalization without overfitting. (c) Model C shows signs of instability and poor convergence, consistent with its high error metrics. (d) Model D converges rapidly but with slightly higher validation loss compared to A and B.}
+\caption{Learning curves showing Training vs. Validation Loss over epochs. \textbf{(a) Model A} demonstrates stable stochastic convergence without a diverging gap, confirming that the lightweight architecture prevents overfitting despite the small batch size. \textbf{(b) Model B} exhibits a validation loss consistently lower than training loss, a characteristic signature of the strong Dropout regularization (0.5) effectively preventing memorization. \textbf{(c) Model C} illustrates optimization collapse (note the $1e7$ scale), indicating that scalar count-supervision alone is insufficient to guide the U-Net spatial weights. \textbf{(d) Model D} displays high initial volatility typical of direct regression without spatial priors, but eventually achieves a smooth and stable convergence.}
 \label{fig:learning_curves}
 \end{figure*}
-
 \textbf{Computational Efficiency:} Beyond accuracy and model size, the reduced parameter count translates to faster inference and lower memory requirements during deployment. While the baseline demands substantial GPU resources for both training and inference, our models can operate efficiently on standard clinical workstations, reducing the barrier to adoption.
 
 \subsection{Interpretation of the performance gap}
