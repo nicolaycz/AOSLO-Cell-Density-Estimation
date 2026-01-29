@@ -91,9 +91,9 @@ print(f"Estimated cone count: {cone_count:.0f}")
 If you use these models, please cite:
 
 ```bibtex
-@mastersthesis{cerda2024aoslo,
+@mastersthesis{cortez2024aoslo,
   title={Cone Density Estimation in AOSLO Images Using Image Processing and Deep Learning},
-  author={Cerda Cortez, Nicolay Agustin},
+  author={Cortez, Nicolay},
   school={Universidad de La Sabana},
   year={2024},
   address={Chia, Colombia}
