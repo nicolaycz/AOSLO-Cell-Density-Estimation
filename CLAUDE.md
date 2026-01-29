@@ -29,11 +29,11 @@ source .venv/bin/activate
 # - PIL (Pillow)
 ```
 
-**No package.json, setup.py, or requirements.txt exists** - dependencies are managed manually in the virtual environment.
+**Dependencies**: Install via `pip install -r requirements.txt`
 
 ## Running the Models
 
-All model implementations are in Jupyter notebooks located in `code/originals/`:
+All model implementations are in Jupyter notebooks located in `notebooks/`:
 
 **Training/Evaluation** (run in Jupyter or Google Colab):
 ```bash
@@ -41,20 +41,20 @@ All model implementations are in Jupyter notebooks located in `code/originals/`:
 jupyter notebook
 
 # Then open one of:
-# - code/originals/Model_A_Lightweight.ipynb
-# - code/originals/Model_B_LinearRegression_with_Metrics.ipynb
-# - code/originals/Model_C_GlobalSum.ipynb
-# - code/originals/Model_D_DirectRegression.ipynb
-# - code/originals/Baseline_Model.ipynb
+# - notebooks/Model_A_Lightweight.ipynb
+# - notebooks/Model_B_LinearRegression_with_Metrics.ipynb
+# - notebooks/Model_C_GlobalSum.ipynb
+# - notebooks/Model_D_DirectRegression.ipynb
+# - notebooks/Baseline_Model.ipynb
 ```
 
 **Note**: The notebooks were originally developed in Google Colab and reference paths like `/content/drive/MyDrive/...`. When running locally, update the data paths:
 ```python
 # Original (Colab):
-train_path = '/content/drive/MyDrive/NCZ/10 Projects/MAA-Cone-Density-Estimation/data/machine1_5/Training+Density/'
+train_path = '/content/drive/MyDrive/.../Training+Density/'
 
 # Local:
-train_path = './data/Training+Density/'
+train_path = '../data/Training+Density/'
 ```
 
 ## Architecture: Four Model Variants
