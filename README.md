@@ -258,11 +258,9 @@ If you use this code or models in your research, please cite:
 
 **Nicolay Agustin Cerda Cortez**
 Engineering Department, Universidad de La Sabana
-nicolayceco@unisabana.edu.co
 
 **Santiago Toledo Cortes** (Thesis Advisor)
 Engineering Department, Universidad de La Sabana
-santiago.cortes1@unisabana.edu.co
 
 ---
 
